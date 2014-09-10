@@ -1,5 +1,4 @@
 language: cpp
 compiler:
  - gcc
- - clang
-script: ./autogen.sh && ./configure && make && make check
+script: ./tools/travis.sh

@@ -48,7 +48,7 @@ AC_SUBST([GTEST_LIBS])
 AC_CHECK_HEADERS([fcntl.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_HEADER_STDBOOL
+# AC_CHECK_HEADER_STDBOOL
 AC_TYPE_SIZE_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
