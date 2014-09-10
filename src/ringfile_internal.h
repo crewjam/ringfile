@@ -30,7 +30,7 @@ class Ringfile {
   bool Write(const void * ptr, size_t size);
   bool Read(void * ptr, size_t size);
   size_t NextRecordSize();
-  
+
   bool Close();
   bool Eof();
 

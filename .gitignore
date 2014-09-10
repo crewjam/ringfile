@@ -3,4 +3,12 @@ Makefile.in
 Makefile
 aclocal.m4
 autom4te.cache
-compile
+build-aux
+src/ringfile
+src/ringfile.o
+src/ringfile_test*
+src/command.o
+src/libringfile.a
+src/main.o
+src/test-suite.log
+.deps

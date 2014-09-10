@@ -2,16 +2,45 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.69])
-AC_INIT([libringfile], [0.9])
-AM_INIT_AUTOMAKE
+AC_INIT([ringfile], [0.9])
+
 AC_CONFIG_SRCDIR([include/ringfile.h])
+AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
-AC_CONFIG_FILES([Makefile src/Makefile include/Makefile])
+AC_CONFIG_AUX_DIR([build-aux])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
+LT_INIT
+
+AC_CONFIG_FILES([
+  Makefile 
+	src/Makefile 
+	include/Makefile
+	third_party/gtest/Makefile
+])
 
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
-AC_PROG_RANLIB
+AC_LANG([C],[C++])
+
+# Define gtest variables 
+GTEST_VERSION="1.7.0"
+if test "x$have_pthread" = "xyes"; then
+  GTEST_CPPFLAGS="-DGTEST_HAS_PTHREAD=1"
+  GTEST_CXXFLAGS="$PTHREAD_CFLAGS"
+  GTEST_LDFLAGS=
+  GTEST_LIBS="$PTHREAD_LIBS"
+else
+  GTEST_CPPFLAGS="-DGTEST_HAS_PTHREAD=0"
+  GTEST_CXXFLAGS=
+  GTEST_LDFLAGS=
+  GTEST_LIBS=
+fi
+AC_SUBST([GTEST_VERSION])
+AC_SUBST([GTEST_CPPFLAGS])
+AC_SUBST([GTEST_CXXFLAGS])
+AC_SUBST([GTEST_LDFLAGS])
+AC_SUBST([GTEST_LIBS])
 
 # Checks for libraries.
 
