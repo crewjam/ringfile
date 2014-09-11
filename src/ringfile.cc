@@ -34,6 +34,7 @@ bool Ringfile::Create(const std::string & path, size_t size) {
     error_ = errno;
     return false;
   }
+  size_ = size;
 
   header_ = reinterpret_cast<Header *>(mmap(0, sizeof(*header_),
     mode == kRead ? 0 : PROT_WRITE, MAP_SHARED, fd_, 0));
@@ -46,6 +47,7 @@ bool Ringfile::Create(const std::string & path, size_t size) {
   header_->flags = 0;
   header_->start_offset = sizeof(*header_);
   header_->end_offset = sizeof(*header_);
+
   return true;
 }
 
@@ -62,6 +64,15 @@ bool Ringfile::Open(const std::string & path, Ringfile::Mode mode) {
   }
   fd_is_owned_ = true;
 
+  {
+    struct stat stat_buffer;
+    if (fstat(fd_, &stat_buffer) == -1) {
+      error_ = errno;
+      return false;
+    }
+    size_ = stat_buffer.st_size;
+  }
+
   header_ = reinterpret_cast<Header *>(mmap(0, sizeof(*header_),
     mode == kRead ? PROT_READ : PROT_READ|PROT_WRITE, MAP_SHARED, fd_, 0));
   if (!header_) {
@@ -77,6 +88,7 @@ bool Ringfile::Open(const std::string & path, Ringfile::Mode mode) {
   }
 
   read_offset_ = header_->start_offset;
+
   return true;
 }
 
@@ -111,8 +123,10 @@ bool Ringfile::PopRecord() {
 
 bool Ringfile::WrappingWrite(const void * ptr, size_t size) {
   // Write the part of the message that fits at the end, if any.
-  size_t end_bytes_available = size_ - header_->end_offset;
-  size_t end_bytes_to_write = std::min(size, end_bytes_available);
+  int64_t end_bytes_available = size_ - header_->end_offset;
+  ssize_t end_bytes_to_write = std::min(static_cast<int64_t>(size),
+    end_bytes_available);
+
   if (end_bytes_to_write) {
     size_t offset_after_write = header_->end_offset + end_bytes_to_write;
     while (offset_after_write > header_->start_offset &&
@@ -158,6 +172,12 @@ bool Ringfile::WrappingWrite(const void * ptr, size_t size) {
 }
 
 bool Ringfile::Write(const void * ptr, size_t size) {
+  // Refuse to write a message that won't fit completely in the file
+  if (size > size_ - sizeof(Header) - sizeof(RecordHeader)) {
+    error_ = EINVAL;
+    return false;
+  }
+
   uint32_t record_header = size;
   if (!WrappingWrite(&record_header, sizeof(record_header))) {
     return false;
@@ -169,15 +189,16 @@ bool Ringfile::Write(const void * ptr, size_t size) {
 }
 
 bool Ringfile::WrappingRead(uint64_t * offset, void * ptr, size_t size) {
-  size_t end_bytes_available = size_ - *offset;
-  size_t end_bytes_to_read = std::min(size, end_bytes_available);
+  int64_t end_bytes_available = size_ - *offset;
+  int64_t end_bytes_to_read = std::min(static_cast<int64_t>(size),
+    end_bytes_available);
 
   if (end_bytes_to_read) {
     if (lseek(fd_, *offset, SEEK_SET) == -1) {
       error_ = errno;
       return false;
     }
-    if (read(fd_, ptr, size) != size) {
+    if (read(fd_, ptr, end_bytes_to_read) != end_bytes_to_read) {
       error_ = errno;
       return false;
     }
@@ -244,7 +265,7 @@ bool Ringfile::Close() {
     header_ = NULL;
   }
 
-  if (fd_ != -1 and fd_is_owned_) {
+  if (fd_ != -1 && fd_is_owned_) {
     close(fd_);
     fd_ = -1;
   }
