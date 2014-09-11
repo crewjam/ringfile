@@ -7,7 +7,6 @@ autom4te.cache
 build-aux
 src/ringfile
 src/ringfile.o
-src/ringfile_test*
 src/command.o
 src/libringfile.a
 src/main.o
@@ -30,3 +29,6 @@ third_party/gtest/lib
 .libs
 *.lo
 *.o
+src/ringfile_test
+src/ringfile_test.log
+src/ringfile_test.trs
