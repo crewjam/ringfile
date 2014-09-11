@@ -46,6 +46,9 @@ class Ringfile {
   bool Close();
   bool Eof();
   int error() { return error_; }
+  int size_max() const;
+  int size_used() const;
+
 
  private:
   // Remove the first record in the file by advancing the start offset to the
@@ -54,8 +57,6 @@ class Ringfile {
 
   bool WrappingWrite(const void * ptr, size_t size);
   bool WrappingRead(uint64_t * offset, void * ptr, size_t size);
-
-
 
   int fd_;
   bool fd_is_owned_;

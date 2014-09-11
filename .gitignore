@@ -8,7 +8,7 @@ build-aux
 src/ringfile
 src/ringfile.o
 src/command.o
-src/libringfile.a
+src/libringfile.la
 src/main.o
 src/test-suite.log
 .deps

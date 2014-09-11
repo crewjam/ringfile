@@ -6,8 +6,9 @@
 
 #include <iostream>
 #include <string>
+#include <vector>
 
-class Switches {
+class Command {
  public:
   enum {
     kModeUnspecified = 0,
@@ -16,10 +17,17 @@ class Switches {
     kModeAppend='a'
   };
 
-  Switches();
-  bool Parse(int argc, char ** argv);
+  Command();
 
-  std::ostream * error_stream;
+  int Main(int argc, char ** argv);
+  bool Parse(int argc, char ** argv);
+  bool Read();
+  bool Write();
+  bool Stat();
+
+  std::istream * stdin;
+  std::ostream * stdout;
+  std::ostream * stderr;
   int mode;
   int verbose;
   long size;
@@ -27,6 +35,5 @@ class Switches {
   std::string program;
 };
 
-int Main(int argc, char **argv);
 
 #endif  // COMMAND_H_

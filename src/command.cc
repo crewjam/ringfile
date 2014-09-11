@@ -3,20 +3,24 @@
 // found in the LICENSE file.
 #include "command.h"
 
+#include <errno.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
-#include <errno.h>
 
-Switches::Switches()
-  : error_stream(&std::cerr),
+#include "ringfile_internal.h"
+
+Command::Command()
+  : stdin(&std::cin),
+    stdout(&std::cout),
+    stderr(&std::cerr),
     mode(kModeUnspecified),
     verbose(0),
     size(-1) {
 }
 
-bool Switches::Parse(int argc, char ** argv) {
+bool Command::Parse(int argc, char ** argv) {
   optind = 1;  // reset global state
   int option_index = 0;
   program = argv[0];
@@ -38,7 +42,7 @@ bool Switches::Parse(int argc, char ** argv) {
     }
 
     if (option == 'h') {
-        *error_stream << "usage: " << program << " [-hvSas] [file]\n";
+      *stderr << "usage: " << program << " [-hvSas] [file]\n";
       return true;
     }
 
@@ -49,7 +53,7 @@ bool Switches::Parse(int argc, char ** argv) {
 
     if (option == kModeStat || option == kModeRead || option == kModeAppend) {
       if (mode != kModeUnspecified) {
-        *error_stream << program << ": cannot specify more than one mode "
+        *stderr << program << ": cannot specify more than one mode "
           "option\n";
         return false;
       }
@@ -62,7 +66,7 @@ bool Switches::Parse(int argc, char ** argv) {
       char * units;
       size = strtol(optarg, &units, 10);
       if (errno != 0 || size <= 0) {
-        *error_stream << program << ": invalid size\n";
+        *stderr << program << ": invalid size\n";
         return false;
       }
 
@@ -75,13 +79,13 @@ bool Switches::Parse(int argc, char ** argv) {
       } else if (strcmp(units, "g") == 0 || strcmp(units, "G") == 0) {
         size *= 1024 * 1024 * 1024;  // size in gb
       } else {
-        *error_stream << program << ": invalid size\n";
+        *stderr << program << ": invalid size\n";
         return false;
       }
       continue;
     }
 
-    *error_stream << program << ": invalid option\n";
+    *stderr << program << ": invalid option\n";
     return false;
   }
 
@@ -91,27 +95,103 @@ bool Switches::Parse(int argc, char ** argv) {
 
   // get the file path
   if (optind + 1 > argc) {
-    *error_stream << program << ": missing file argument\n";
+    *stderr << program << ": missing file argument\n";
     return false;
   }
   if (optind + 1 < argc) {
-    *error_stream << program << ": too many file arguments\n";
+    *stderr << program << ": too many file arguments\n";
     return false;
   }
   path = argv[optind];
   return true;
 }
 
+bool Command::Read() {
+  Ringfile ring_file;
+  if (!ring_file.Open(path, Ringfile::kRead)) {
+    *stderr << path << ": " << strerror(ring_file.error()) << "\n";
+    return false;
+  }
 
-int Main(int argc, char **argv) {
-  Switches arguments;
-  if (!arguments.Parse(argc, argv)) {
+  while (true) {
+    size_t size = ring_file.NextRecordSize();
+    if (size == -1) {
+      break;
+    }
+
+    std::string record;
+    record.resize(size);
+    if (!ring_file.Read(const_cast<char *>(record.c_str()), record.size())) {
+      *stderr << path << ": " << strerror(ring_file.error()) << "\n";
+      return false;
+    }
+    *stdout << record << std::endl;
+  }
+  return true;
+}
+
+bool Command::Write() {
+  Ringfile ring_file;
+
+  if (!ring_file.Open(path, Ringfile::kAppend)) {
+    if (ring_file.error() != ENOENT) {
+      *stderr << path << ": cannot open: " << strerror(ring_file.error())
+        << "\n";
+      return false;
+    }
+    if (size == -1) {
+      *stderr << path << ": does not exist and --size was not specified\n";
+      return false;
+    }
+
+    if (!ring_file.Create(path, size)) {
+      *stderr << path << ": cannot create: " << strerror(ring_file.error())
+        << "\n";
+      return false;
+    }
+  }
+
+  // Treat each line as a record
+  std::string line;
+  while (std::getline(*stdin, line)) {
+    if (!ring_file.Write(line.c_str(), line.size())) {
+      *stderr << path << ": writing: " << strerror(ring_file.error()) << "\n";
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool Command::Stat() {
+  Ringfile ring_file;
+  if (!ring_file.Open(path, Ringfile::kRead)) {
+    *stderr << path << ": " << strerror(ring_file.error()) << "\n";
+    return false;
+  }
+
+  *stdout << "File: " << path << "\n";
+  *stdout << "Size: " << ring_file.size_max() << " bytes\n";
+  *stdout << "Used: " << ring_file.size_used() << " bytes\n";
+  return true;
+}
+
+int Command::Main(int argc, char ** argv) {
+  if (!Parse(argc, argv)) {
     return 1;
   }
 
-  std::cout << "mode=" << arguments.mode << " verbose=" << arguments.verbose
-    << " size=" << arguments.size << " path=" << arguments.path
-    << " program=" << arguments.program << "\n";
-
-  return 0;
+  bool ok;
+  switch (mode) {
+    case kModeRead:
+      ok = Read();
+      break;
+    case kModeAppend:
+      ok = Write();
+      break;
+    case kModeStat:
+      ok = Stat();
+      break;
+  }
+  return ok ? 0 : 1;
 }

@@ -258,7 +258,6 @@ size_t Ringfile::NextRecordSize() {
   return record_header.size;
 }
 
-
 bool Ringfile::Close() {
   if (header_) {
     munmap(header_, sizeof(*header_));
@@ -279,4 +278,14 @@ bool Ringfile::Eof() {
   return header_->end_offset == lseek(fd_, 0, SEEK_CUR);
 }
 
+int Ringfile::size_max() const {
+  return size_;
+}
 
+int Ringfile::size_used() const {
+  if (header_->start_offset <= header_->end_offset) {
+    return header_->end_offset - header_->start_offset;
+  } else {
+    return size_ - (header_->start_offset - header_->end_offset);
+  }
+}

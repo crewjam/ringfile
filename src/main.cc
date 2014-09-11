@@ -4,5 +4,6 @@
 #include "command.h"
 
 int main(int argc, char **argv) {
-  return Main(argc, argv);
+  Command command;
+  return command.Main(argc, argv);
 }
