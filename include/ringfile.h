@@ -40,7 +40,7 @@ size_t ringfile_write(const void * ptr, size_t size, RINGFILE * stream);
 
 // Read the next record into the `size` byte buffer specified by `ptr`.
 // Returns the number of bytes copied into ptr. In case the provided
-// buffer is too small, the function returns -1 and no bytes are 
+// buffer is too small, the function returns -1 and no bytes are
 // copied.
 size_t ringfile_read(void * ptr, size_t size, RINGFILE * stream);
 
@@ -57,4 +57,3 @@ int ringfile_fileno(RINGFILE * stream);
 #endif
 
 #endif  // RINGFILE_H_
-
