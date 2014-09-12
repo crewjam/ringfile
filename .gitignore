@@ -32,3 +32,4 @@ third_party/gtest/lib
 src/ringfile_test
 src/ringfile_test.log
 src/ringfile_test.trs
+ringfile-*.tar.gz
