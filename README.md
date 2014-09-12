@@ -36,6 +36,13 @@ TODO
 ----
 
 - support incremental reading/writing
-- support terminator deliminted not just length delimited
+- support terminator delimited not just length delimited
 - make the file format work on different endiannesses
 - clear up confusion about integer types uint64/uint32/size_t/ssize_t/int
+- implement c wrapper
+- export c++ class
+- example use with syslog-ng, etc
+- write some text about motivations etc
+- support sparse files (this may be a bad idea)
+- dont corrupt the file on partial writes
+- python interface/implementation
