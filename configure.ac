@@ -8,7 +8,7 @@ AC_CONFIG_SRCDIR([include/ringfile.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([foreign subdir-objects serial-tests])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 LT_INIT
 
 AC_CONFIG_FILES([
