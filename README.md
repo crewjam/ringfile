@@ -45,4 +45,4 @@ TODO
 - write some text about motivations etc
 - support sparse files (this may be a bad idea)
 - dont corrupt the file on partial writes
-- python interface/implementation
+- ~~python interface/implementation~~
