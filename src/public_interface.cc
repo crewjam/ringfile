@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <ringfile.h>
+#include <string.h>
 
 #include "ringfile_internal.h"
 
