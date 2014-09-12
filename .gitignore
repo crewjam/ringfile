@@ -33,3 +33,5 @@ src/ringfile_test
 src/ringfile_test.log
 src/ringfile_test.trs
 ringfile-*.tar.gz
+ringfile.egg-info
+__pycache__

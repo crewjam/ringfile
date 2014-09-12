@@ -35,28 +35,28 @@ struct RINGFILE;
 //
 
 // Create a new ringfile. `path` must not exist.
-RINGFILE * ringfile_create(const char * path, size_t size);
+struct RINGFILE * ringfile_create(const char * path, size_t size);
 
 // Open the file for reading. Mode is one of 'r' (read) or 'a' (append).
-RINGFILE * ringfile_open(const char * path, const char * mode);
+struct RINGFILE * ringfile_open(const char * path, const char * mode);
 
 // TODO(ross): not yet implemented
 // RINGFILE * ringfile_fdopen(int fd, const char * mode);
 
-size_t ringfile_write(const void * ptr, size_t size, RINGFILE * stream);
+size_t ringfile_write(const void * ptr, size_t size, struct RINGFILE * stream);
 
 // Read the next record into the `size` byte buffer specified by `ptr`.
 // Returns the number of bytes copied into ptr. In case the provided
 // buffer is too small, the function returns -1 and no bytes are
 // copied.
-size_t ringfile_read(void * ptr, size_t size, RINGFILE * stream);
+size_t ringfile_read(void * ptr, size_t size, struct RINGFILE * stream);
 
 // Return the size of the next record
-size_t ringfile_next_record_size(RINGFILE * stream);
+size_t ringfile_next_record_size(struct RINGFILE * stream);
 
 // Close the the specified stream and free resources associated with it. Do not
 // reference `stream` again after this call.
-int ringfile_close(RINGFILE * stream);
+int ringfile_close(struct RINGFILE * stream);
 
 #ifdef __cplusplus
 }
