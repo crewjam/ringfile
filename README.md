@@ -37,6 +37,5 @@ TODO
 
 - support incremental reading/writing
 - support terminator deliminted not just length delimited
-- actually write the program to read/write the file
 - make the file format work on different endiannesses
 - clear up confusion about integer types uint64/uint32/size_t/ssize_t/int
