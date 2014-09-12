@@ -8,20 +8,22 @@ AC_CONFIG_SRCDIR([include/ringfile.h])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([foreign subdir-objects])
+AM_INIT_AUTOMAKE([foreign subdir-objects serial-tests])
 LT_INIT
 
 AC_CONFIG_FILES([
-  Makefile 
-	src/Makefile 
-	include/Makefile
-	third_party/gtest/Makefile
+  Makefile
+  src/Makefile 
+  include/Makefile
+  third_party/gtest/Makefile
+  python/Makefile
 ])
 
 # Checks for programs.
 AC_PROG_CXX
 AC_PROG_CC
 AC_LANG([C],[C++])
+AM_PATH_PYTHON([2.7])
 
 # Define gtest variables 
 GTEST_VERSION="1.7.0"

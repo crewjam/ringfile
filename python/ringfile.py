@@ -17,12 +17,9 @@ class Ringfile(object):
     int ringfile_close(struct RINGFILE * stream);
     """)
   if False:
-    _library = _ffi.dlopen("src/.libs/libringfile.dylib")
+    _library = _ffi.verify("#include <ringfile.h>", libraries=["ringfile"])
   else:
-    _library = _ffi.verify("#include <ringfile.h>",
-      libraries=["ringfile"],
-      include_dirs=["/tmp/foo/include"],
-      library_dirs=["/tmp/foo/lib"])
+    _library = _ffi.dlopen("ringfile")
 
   def __init__(self, path, mode="r", _size=None):
     if _size is not None:
