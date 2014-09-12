@@ -66,10 +66,6 @@ class Ringfile {
   uint64_t read_offset_;
 };
 
-struct RINGFILE {
-  Ringfile ringfile;
-};
-
 #endif  // RINGFILE_INTERNAL_H_
 
 

@@ -39,7 +39,7 @@ TODO
 - support terminator delimited not just length delimited
 - make the file format work on different endiannesses
 - clear up confusion about integer types uint64/uint32/size_t/ssize_t/int
-- implement c wrapper
+- ~~implement c wrapper~~
 - export c++ class
 - example use with syslog-ng, etc
 - write some text about motivations etc
