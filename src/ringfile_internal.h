@@ -54,7 +54,11 @@ class Ringfile {
   bool StreamingWriteStart();
   bool StreamingWrite(const void * ptr, size_t size);
   bool StreamingWriteFinish();
-
+  
+  size_t StreamingReadStart();
+  size_t StreamingRead(void * ptr, size_t size);
+  bool StreamingReadFinish();
+  
  private:
   // Remove the first record in the file by advancing the start offset to the
   // next record. Returns true on success.
@@ -73,6 +77,8 @@ class Ringfile {
 
   RecordHeader partial_write_header_;
   uint64_t partial_write_header_offset_;
+  
+  uint64_t partial_read_bytes_remaining_;
 };
 
 #endif  // RINGFILE_INTERNAL_H_

@@ -301,17 +301,21 @@ TEST(RingfileTest, ReverseCircularWriteStreaming) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(13, next_record_size) << strerror(ringfile.error());
-
     std::string buffer;
-    buffer.resize(next_record_size);
-    EXPECT_TRUE(ringfile.Read(const_cast<char *>(buffer.c_str()),
-      next_record_size));
+    EXPECT_EQ(13, ringfile.StreamingReadStart());
+    while (true) {
+      char buffer_part[5];
+      size_t buffer_part_size = ringfile.StreamingRead(buffer_part, 5);
+      if (buffer_part_size == 0) {
+        break;
+      }
+      ASSERT_NE(-1, buffer_part_size);
+      buffer.append(std::string(buffer_part, buffer_part_size));
+    }
+    ringfile.StreamingReadFinish();
     EXPECT_EQ("nopqrstuvwxyz", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_EQ(-1, ringfile.StreamingReadStart());
   }
 }
 
@@ -350,16 +354,21 @@ TEST(RingfileTest, CannotWriteMessageAboveLimitStreaming) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(22, next_record_size) << strerror(ringfile.error());
-
     std::string buffer;
-    buffer.resize(next_record_size);
-    EXPECT_TRUE(ringfile.Read(const_cast<char *>(buffer.c_str()),
-      next_record_size));
+    EXPECT_EQ(22, ringfile.StreamingReadStart());
+    while (true) {
+      char buffer_part[5];
+      size_t buffer_part_size = ringfile.StreamingRead(buffer_part, 5);
+      if (buffer_part_size == 0) {
+        break;
+      }
+      ASSERT_NE(-1, buffer_part_size);
+      buffer.append(std::string(buffer_part, buffer_part_size));
+    }
+    ringfile.StreamingReadFinish();
     EXPECT_EQ("0123456789012345678901", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
+    size_t next_record_size = ringfile.StreamingReadStart();
     EXPECT_EQ(-1, next_record_size);
   }
 }
@@ -407,12 +416,16 @@ TEST(RingfileTest, CanAppendEdgeStreaming) {
     EXPECT_EQ(4, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
-    buffer.resize(next_record_size);
-    EXPECT_TRUE(ringfile.Read(const_cast<char *>(buffer.c_str()),
-      next_record_size));
+    buffer.resize(4);
+    EXPECT_EQ(4, ringfile.StreamingReadStart());
+    size_t buffer_part_size = ringfile.StreamingRead(const_cast<char *>(buffer.c_str()), 5);
+    EXPECT_EQ(4, buffer_part_size);
+    EXPECT_EQ(0, ringfile.StreamingRead(NULL, 5));
+    ringfile.StreamingReadFinish();
+    
     EXPECT_EQ("abcd", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
+    next_record_size = ringfile.StreamingReadStart();
     EXPECT_EQ(-1, next_record_size);
   }
 }

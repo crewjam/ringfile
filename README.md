@@ -35,7 +35,7 @@ Reading example:
 TODO
 ----
 
-- support incremental reading
+- ~~support incremental reading~~
 - ~~support incremental writing~~
 - support terminator delimited not just length delimited
 - make the file format work on different endiannesses

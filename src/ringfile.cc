@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "ringfile_internal.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
@@ -358,4 +359,38 @@ bool Ringfile::WrappingWriteAtOffset(uint64_t offset, const void * data,
   }
 
   return true;
+}
+
+size_t Ringfile::StreamingReadStart() {
+  if (!header_ || fd_ == -1) {
+    return -1;
+  }
+  if (read_offset_ == header_->end_offset) {
+    return -1;
+  }
+  
+  uint64_t starting_read_offset = read_offset_;
+  RecordHeader record_header;
+  if (!WrappingRead(&read_offset_, &record_header, sizeof(record_header))) {
+    read_offset_ = starting_read_offset;
+    return -1;
+  }
+
+  partial_read_bytes_remaining_ = record_header.size;
+  return partial_read_bytes_remaining_;
+}
+
+size_t Ringfile::StreamingRead(void * ptr, size_t size) {
+  if (size > partial_read_bytes_remaining_) {
+    size = partial_read_bytes_remaining_;
+  }
+  if (!WrappingRead(&read_offset_, ptr, size)) {
+    return -1;
+  }
+  partial_read_bytes_remaining_ -= size;
+  return size;
+}
+
+bool Ringfile::StreamingReadFinish() {
+  assert(partial_read_bytes_remaining_ == 0);
 }
