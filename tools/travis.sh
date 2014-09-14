@@ -1,12 +1,10 @@
 #!/bin/bash
 set -ex
-python tools/cpplint.py src/*.cc src/*.h include/*.h || true
+python tools/cpplint.py {src,include,python}/*.{h,cc} || true
 if uname | grep Linux ; then
   sudo apt-get install -qq autoconf-archive
 fi
-sudo pip install cffi
 
 ./autogen.sh
 ./configure
 make distcheck
-

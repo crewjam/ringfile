@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import unittest
 
-from ringfile import Ringfile
+from ringfile import Ringfile, MODE_READ, MODE_APPEND
 
 def TempDir():
   path = tempfile.mkdtemp()
@@ -19,36 +19,42 @@ class RingFileTest(unittest.TestCase):
   def testCannotOpenBogusPath(self):
     path = TempDir() + "/does not exist/ring"
     with self.assertRaises(IOError):
-      Ringfile.Create(path, 1000)
+      Ringfile.create(path, 1000)
 
     with self.assertRaises(IOError):
-      Ringfile(path, "r")
+      Ringfile(path, MODE_READ)
 
     with self.assertRaises(IOError):
-      Ringfile(path, "a")
+      Ringfile(path, MODE_APPEND)
 
     path = TempDir() + "/ring"
     with self.assertRaises(IOError):
-      Ringfile(path, "r")
+      Ringfile(path, MODE_READ)
     with self.assertRaises(IOError):
-      Ringfile(path, "a")
+      Ringfile(path, MODE_APPEND)
 
   def testCanReadAndWriteBasics(self):
     path = TempDir() + "/ring"
 
-    ringfile = Ringfile.Create(path, 1024)
-    ringfile.Write("Hello, World!")
-    ringfile.Close()
+    ringfile = Ringfile.create(path, 1024)
+    ringfile.write("Hello, World!")
+    ringfile.close()
 
-    ringfile = Ringfile(path, "a")
-    ringfile.Write("Goodbye, World!")
-    ringfile.Close()
+    ringfile = Ringfile(path, MODE_APPEND)
+    ringfile.write("Goodbye, World!")
+    ringfile.close()
 
-    ringfile = Ringfile(path, "r")
-    self.assertEqual("Hello, World!", ringfile.Read())
-    self.assertEqual("Goodbye, World!", ringfile.Read())
-    self.assertEqual(None, ringfile.Read())
+    ringfile = Ringfile(path, MODE_READ)
+    self.assertEqual("Hello, World!", ringfile.read())
+    self.assertEqual("Goodbye, World!", ringfile.read())
+    self.assertEqual(None, ringfile.read())
 
+  def testDocsExist(self):
+    self.assertTrue(Ringfile.__doc__)
+    for name in dir(Ringfile):
+      if name.startswith("_"):
+        continue
+      self.assertTrue(getattr(Ringfile, name).__doc__, name)
 
 if __name__ == "__main__":
   unittest.main()

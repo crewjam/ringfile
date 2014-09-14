@@ -1,5 +1,6 @@
 .idea
 *~
+*.pyc
 Makefile.in
 Makefile
 aclocal.m4
@@ -35,3 +36,7 @@ src/ringfile_test.trs
 ringfile-*.tar.gz
 ringfile.egg-info
 __pycache__
+python/build
+python/pymod-build-stamp
+python/ringfile.so
+
