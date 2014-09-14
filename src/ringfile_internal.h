@@ -10,7 +10,6 @@
 
 #include <string>
 
-
 #if !defined(__cplusplus)
 #error C++ only
 #endif
@@ -38,16 +37,16 @@ class Ringfile {
 
   bool Create(const std::string & path, size_t size);
   bool Open(const std::string & path, Mode mode);
-  bool Resize(size_t size);
   bool Write(const void * ptr, size_t size);
   size_t Read(void * ptr, size_t size);
   size_t NextRecordSize();
 
   bool Close();
-  bool Eof();
+  
   int error() { return error_; }
-  int size_max() const;
-  int size_used() const;
+  size_t bytes_max() const;
+  size_t bytes_used() const;
+  size_t bytes_available() const;
 
   // Support for writing records piecewise without knowing exactly how big the
   // record will be when writing starts.
@@ -55,18 +54,24 @@ class Ringfile {
   bool StreamingWrite(const void * ptr, size_t size);
   bool StreamingWriteFinish();
   
+  // Functions that support reading partial records
   size_t StreamingReadStart();
   size_t StreamingRead(void * ptr, size_t size);
   bool StreamingReadFinish();
   
  private:
+  // Set the file pointer to `offset`.
+  // Note: whenever we refer to a file offset it is relative to beginning of the
+  // data area of the file, not relative to the beginning of the file. Also, 
+  // all offsets are interpreted modulo the data size (bytes_max()).
+  bool SeekToOffset(uint64_t offset);
+  
   // Remove the first record in the file by advancing the start offset to the
   // next record. Returns true on success.
   bool PopRecord();
 
-  bool WrappingWrite(const void * ptr, size_t size);
-  bool WrappingWriteAtOffset(uint64_t offset, const void * data, size_t size);
-  bool WrappingRead(uint64_t * offset, void * ptr, size_t size);
+  bool WrappingWrite(uint64_t offset, const void * data, size_t size);
+  bool WrappingRead(uint64_t offset, void * ptr, size_t size);
 
   int fd_;
   bool fd_is_owned_;
@@ -78,7 +83,8 @@ class Ringfile {
   RecordHeader partial_write_header_;
   uint64_t partial_write_header_offset_;
   
-  uint64_t partial_read_bytes_remaining_;
+  RecordHeader partial_read_header_;
+  uint64_t partial_read_offset_;
 };
 
 #endif  // RINGFILE_INTERNAL_H_

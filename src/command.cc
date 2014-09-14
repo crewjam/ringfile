@@ -171,8 +171,8 @@ bool Command::Stat() {
   }
 
   *stdout << "File: " << path << "\n";
-  *stdout << "Size: " << ring_file.size_max() << " bytes\n";
-  *stdout << "Used: " << ring_file.size_used() << " bytes\n";
+  *stdout << "Size: " << ring_file.bytes_max() << " bytes\n";
+  *stdout << "Used: " << ring_file.bytes_used() << " bytes\n";
   return true;
 }
 
