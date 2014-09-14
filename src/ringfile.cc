@@ -289,3 +289,73 @@ int Ringfile::size_used() const {
     return size_ - (header_->start_offset - header_->end_offset);
   }
 }
+
+
+bool Ringfile::StreamingWriteStart() {
+  partial_write_header_.size = 0;
+  partial_write_header_offset_ = header_->end_offset;
+  if (!WrappingWrite(&partial_write_header_, sizeof(partial_write_header_))) {
+    return false;
+  }
+  return true;
+}
+
+bool Ringfile::StreamingWrite(const void * ptr, size_t size) {
+  partial_write_header_.size += size;
+
+  // Refuse to write a message that won't fit completely in the file
+  if (partial_write_header_.size > size_ - sizeof(Header) -
+      sizeof(RecordHeader)) {
+    error_ = EINVAL;
+    header_->end_offset = partial_write_header_offset_;
+    return false;
+  }
+
+  if (!WrappingWrite(ptr, size)) {
+    return false;
+  }
+  return true;
+}
+
+bool Ringfile::StreamingWriteFinish() {
+  return WrappingWriteAtOffset(partial_write_header_offset_,
+    &partial_write_header_, sizeof(partial_write_header_));
+}
+
+bool Ringfile::WrappingWriteAtOffset(uint64_t offset, const void * data,
+    size_t size) {
+  int start_bytes_to_write = 0;
+  int end_bytes_to_write = size;
+
+  int end_offset = offset + size;
+  if (end_offset >= size_) {
+    start_bytes_to_write += (end_offset - size_);
+    end_bytes_to_write -= start_bytes_to_write;
+    end_offset = sizeof(Header) + start_bytes_to_write;
+  }
+
+  if (end_bytes_to_write) {
+    if (lseek(fd_, offset, SEEK_SET) == -1) {
+      error_ = errno;
+      return false;
+    }
+    if (write(fd_, data, end_bytes_to_write) != end_bytes_to_write) {
+      error_ = errno;
+      return false;
+    }
+  }
+
+  if (start_bytes_to_write) {
+    if (lseek(fd_, sizeof(Header), SEEK_SET) == -1) {
+      error_ = errno;
+      return false;
+    }
+    if (write(fd_, reinterpret_cast<const char *>(data) + end_bytes_to_write,
+        start_bytes_to_write) != start_bytes_to_write) {
+      error_ = errno;
+      return false;
+    }
+  }
+
+  return true;
+}

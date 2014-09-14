@@ -35,7 +35,8 @@ Reading example:
 TODO
 ----
 
-- support incremental reading/writing
+- support incremental reading
+- ~~support incremental writing~~
 - support terminator delimited not just length delimited
 - make the file format work on different endiannesses
 - clear up confusion about integer types uint64/uint32/size_t/ssize_t/int

@@ -49,6 +49,11 @@ class Ringfile {
   int size_max() const;
   int size_used() const;
 
+  // Support for writing records piecewise without knowing exactly how big the
+  // record will be when writing starts.
+  bool StreamingWriteStart();
+  bool StreamingWrite(const void * ptr, size_t size);
+  bool StreamingWriteFinish();
 
  private:
   // Remove the first record in the file by advancing the start offset to the
@@ -56,6 +61,7 @@ class Ringfile {
   bool PopRecord();
 
   bool WrappingWrite(const void * ptr, size_t size);
+  bool WrappingWriteAtOffset(uint64_t offset, const void * data, size_t size);
   bool WrappingRead(uint64_t * offset, void * ptr, size_t size);
 
   int fd_;
@@ -64,6 +70,9 @@ class Ringfile {
   size_t size_;
   Header * header_;
   uint64_t read_offset_;
+
+  RecordHeader partial_write_header_;
+  uint64_t partial_write_header_offset_;
 };
 
 #endif  // RINGFILE_INTERNAL_H_
