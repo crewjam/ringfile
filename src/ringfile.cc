@@ -89,11 +89,11 @@ bool Ringfile::Open(const std::string & path, Ringfile::Mode mode) {
   }
 
   read_offset_ = header_->start_offset;
-
   return true;
 }
 
 bool Ringfile::SeekToOffset(uint64_t offset) {
+  assert(offset < bytes_max()); // DO NOT COMMIT
   offset %= bytes_max();
   if (lseek(fd_, sizeof(Header) + offset, SEEK_SET) == -1) {
     error_ = errno;
@@ -106,32 +106,35 @@ bool Ringfile::WrappingRead(uint64_t offset, void * ptr, size_t size) {
   offset %= bytes_max();
   uint64_t end_offset = (offset + size) % bytes_max();
   
-  // common case: a simple single segment read
+  uint64_t end_bytes;
+  uint64_t start_bytes;
   if (offset < end_offset) {
+    // simple case: the whole write is at the end
+    end_bytes = size;
+    start_bytes = 0;
+  } else {
+    // complex case: part of the write is at the end and part at the start
+    end_bytes = bytes_max() - offset;
+    start_bytes = size - end_bytes;
+  }
+  
+  if (end_bytes) {
     if (!SeekToOffset(offset)) {
       return false;
     }
-    if (read(fd_, ptr, size) != size) {
+    if (read(fd_, ptr, end_bytes) != end_bytes) {
       return false;
     }
-    return true;
   }
   
-  // complex case: part of the read is at the end and part at the start
-  uint64_t end_bytes_to_read = bytes_max() - offset;
-  uint64_t start_bytes_to_read = size - end_bytes_to_read;
-  if (!SeekToOffset(offset)) {
-    return false;
-  }
-  if (read(fd_, ptr, end_bytes_to_read) != end_bytes_to_read) {
-    return false;
-  }
-  if (!SeekToOffset(0)) {
-    return false;
-  }
-  if (read(fd_, reinterpret_cast<char *>(ptr) + end_bytes_to_read, 
-      start_bytes_to_read) != start_bytes_to_read) {
-    return false;
+  if (start_bytes) {
+    if (!SeekToOffset(0)) {
+      return false;
+    }
+    if (read(fd_, reinterpret_cast<char *>(ptr) + end_bytes,  
+        start_bytes) != start_bytes) {
+      return false;
+    }
   }
   return true;
 }
@@ -140,33 +143,37 @@ bool Ringfile::WrappingWrite(uint64_t offset, const void * ptr, size_t size) {
   offset %= bytes_max();
   uint64_t end_offset = (offset + size) % bytes_max();
   
-  // common case: a simple single segment write
+  uint64_t end_bytes;
+  uint64_t start_bytes;
   if (offset < end_offset) {
+    // simple case: the whole write is at the end
+    end_bytes = size;
+    start_bytes = 0;
+  } else {
+    // complex case: part of the write is at the end and part at the start
+    end_bytes = bytes_max() - offset;
+    start_bytes = size - end_bytes;
+  }
+  
+  if (end_bytes) {
     if (!SeekToOffset(offset)) {
       return false;
     }
-    if (write(fd_, ptr, size) != size) {
+    if (write(fd_, ptr, end_bytes) != end_bytes) {
       return false;
     }
-    return true;
   }
   
-  // complex case: part of the write is at the end and part at the start
-  uint64_t end_bytes_to_write = bytes_max() - offset;
-  uint64_t start_bytes_to_write = size - end_bytes_to_write;
-  if (!SeekToOffset(offset)) {
-    return false;
+  if (start_bytes) {
+    if (!SeekToOffset(0)) {
+      return false;
+    }
+    if (write(fd_, reinterpret_cast<const char *>(ptr) + end_bytes,  
+        start_bytes) != start_bytes) {
+      return false;
+    }
   }
-  if (write(fd_, ptr, end_bytes_to_write) != end_bytes_to_write) {
-    return false;
-  }
-  if (!SeekToOffset(0)) {
-    return false;
-  }
-  if (write(fd_, reinterpret_cast<const char *>(ptr) + end_bytes_to_write, 
-      start_bytes_to_write) != start_bytes_to_write) {
-    return false;
-  }
+  
   return true;
 }
 
@@ -178,83 +185,94 @@ bool Ringfile::PopRecord() {
 
   // Read the first record header
   RecordHeader record_header;
-  if (!WrappingRead(header_->start_offset, &record_header, sizeof(record_header))) {
+  if (!WrappingRead(header_->start_offset, &record_header,
+      sizeof(record_header))) {
     return false;
   }
-
+  
   // Advance the start pointer to the end of the record.
   header_->start_offset += sizeof(record_header) + record_header.size;
   header_->start_offset %= bytes_max();
   
   // Reset an empty list (optional)
-  if (header_->start_offset == header_->end_offset) {
-    header_->start_offset = 0;
-    header_->end_offset = 0;
-  }
+  //if (header_->start_offset == header_->end_offset) {
+  //  header_->start_offset = 0;
+  //  header_->end_offset = 0;
+  //}
 
   return true;
 }
 
-size_t Ringfile::NextRecordSize() {
+bool Ringfile::EndOfFile() {
+  return read_offset_ == header_->end_offset;
+}
+
+bool Ringfile::NextRecordSize(size_t * size) {
   if (!header_ || fd_ == -1) {
-    return -1;
+    return false;
   }
   if (read_offset_ == header_->end_offset) {
-    return -1;
+    return false;
   }
 
   RecordHeader record_header;
   if (!WrappingRead(read_offset_, &record_header, sizeof(record_header))) {
-    return -1;
+    return false;
   }
-  return record_header.size;
+  *size = record_header.size;
+  return true;
 }
 
-size_t Ringfile::Read(void * buffer, size_t buffer_size) {
+bool Ringfile::Read(void * buffer, size_t buffer_size) {
   if (!header_ || fd_ == -1) {
-    return -1;
+    return false;
   }
   
   RecordHeader record_header;
   if (!WrappingRead(read_offset_, &record_header, sizeof(record_header))) {
-    return -1;
+    return false;
   }
   if (record_header.size > buffer_size) {
-    return -1;
+    return false;
   }
   if (!WrappingRead(read_offset_ + sizeof(record_header), buffer, 
       record_header.size)) {
-    return -1;
+    return false;
   }
-  read_offset_ += record_header.size;
-  return record_header.size;
+  read_offset_ += sizeof(record_header) + record_header.size;
+  read_offset_ %= bytes_max();
+  return true;
 }
 
 bool Ringfile::Write(const void * ptr, size_t size) {
   RecordHeader record_header;
   record_header.size = size;
   
-  if (bytes_max() < (sizeof(record_header) + size)) {
+  // Refuse a record that is too big for the buffer
+  if (bytes_max() < (sizeof(record_header) + size + 1)) {
     return false;
   }
   
-  // Pop records 
+  // Pop records until there is enough space available
   while (bytes_available() < (sizeof(record_header) + size)) {
-    PopRecord();
+    size_t bytes_available_start =bytes_available();
+    if (!PopRecord()) {
+      return false;
+    }
+    assert(bytes_available() > bytes_available_start);
   }
   
-  uint64_t offset = header_->end_offset;
-  if (!WrappingWrite(offset, &record_header, sizeof(record_header))) {
+  if (!WrappingWrite(header_->end_offset, &record_header, 
+      sizeof(record_header))) {
     return false;
   }
-  offset += sizeof(record_header);
-  
-  if (!WrappingWrite(offset, ptr, size)) {
+  if (!WrappingWrite(header_->end_offset + sizeof(record_header), ptr, size)) {
     return false;
   }
   
-  header_->end_offset += size;
+  header_->end_offset += sizeof(record_header) + size;
   header_->end_offset %= bytes_max();
+  
   return true;
 }
 
@@ -308,7 +326,7 @@ bool Ringfile::StreamingWrite(const void * ptr, size_t size) {
   uint32_t new_record_size = partial_write_header_.size + size;
   
   // Refuse to write a message that won't fit completely in the file
-  if (new_record_size > bytes_max()) {
+  if (sizeof(partial_write_header_) + new_record_size > bytes_max() - 1) {
     error_ = EINVAL;
     return false;
   }
@@ -360,9 +378,13 @@ size_t Ringfile::StreamingReadStart() {
 }
 
 size_t Ringfile::StreamingRead(void * ptr, size_t size) {
-  uint64_t offset = read_offset_ + sizeof(partial_read_header_) + partial_read_offset_;
-  if (offset + size > partial_read_header_.size) {
-    size = partial_read_header_.size - offset;
+  uint64_t offset = read_offset_ + sizeof(partial_read_header_) + 
+    partial_read_offset_;
+  if (partial_read_offset_ + size > partial_read_header_.size) {
+    size = partial_read_header_.size - partial_read_offset_;
+  }
+  if (size == 0) {
+    return 0;
   }
   
   if (!WrappingRead(offset, ptr, size)) {

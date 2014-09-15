@@ -38,8 +38,9 @@ class Ringfile {
   bool Create(const std::string & path, size_t size);
   bool Open(const std::string & path, Mode mode);
   bool Write(const void * ptr, size_t size);
-  size_t Read(void * ptr, size_t size);
-  size_t NextRecordSize();
+  bool Read(void * ptr, size_t size);
+  bool NextRecordSize(size_t * size);
+  bool EndOfFile();
 
   bool Close();
   

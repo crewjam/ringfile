@@ -211,9 +211,16 @@ static PyObject * Ringfile_write(RingfileObject * self, PyObject * args,
 }
 
 static PyObject * Ringfile_read(RingfileObject *self) {
-  size_t record_size = self->impl->NextRecordSize();
-  if (record_size == -1) {
+  if (self->impl->EndOfFile()) {
     Py_RETURN_NONE;
+  }
+  
+  size_t record_size;
+  if (!self->impl->NextRecordSize(&record_size)) {
+    PyObject * error = PyInt_FromLong(self->impl->error());
+    PyErr_SetObject(PyExc_IOError, error);
+    Py_DECREF(error);
+    return NULL;
   }
 
   PyObject * buffer = PyString_FromStringAndSize(NULL, record_size);

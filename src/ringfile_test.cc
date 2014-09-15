@@ -29,8 +29,8 @@ TEST(RingfileTest, CanReadAndWriteBasics) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x18\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x29\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x00\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x11\x00\x00\x00\x00\x00\x00\x00"  // end offset
     "\x0d\x00\x00\x00"  // record length
     "Hello, World!", 41), GetFileContents(path).substr(0, 41));
 
@@ -39,7 +39,8 @@ TEST(RingfileTest, CanReadAndWriteBasics) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
+    size_t next_record_size;
+    EXPECT_TRUE(ringfile.NextRecordSize(&next_record_size));
     EXPECT_EQ(13, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
@@ -48,8 +49,7 @@ TEST(RingfileTest, CanReadAndWriteBasics) {
       next_record_size));
     EXPECT_EQ("Hello, World!", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
   }
 }
 
@@ -75,7 +75,7 @@ TEST(RingfileTest, CircularWrite) {
   {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Create(path, 50));
-
+    
     std::string message("Hello, World!");
     ringfile.Write(message.c_str(), message.size());
     ringfile.Close();
@@ -84,7 +84,7 @@ TEST(RingfileTest, CircularWrite) {
   {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kAppend));
-
+    
     std::string message("Goodbye, Bob!");
     ringfile.Write(message.c_str(), message.size());
     ringfile.Close();
@@ -93,8 +93,8 @@ TEST(RingfileTest, CircularWrite) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x29\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x20\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x11\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x08\x00\x00\x00\x00\x00\x00\x00"  // end offset
     "ye, Bob!"  // end of the record
     "o, World!"  // leftover from hello world
     "\x0d\x00\x00\x00Goodb"  // beginning of message
@@ -105,7 +105,8 @@ TEST(RingfileTest, CircularWrite) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
+    size_t next_record_size;
+    EXPECT_TRUE(ringfile.NextRecordSize(&next_record_size));
     EXPECT_EQ(13, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
@@ -114,8 +115,7 @@ TEST(RingfileTest, CircularWrite) {
       next_record_size));
     EXPECT_EQ("Goodbye, Bob!", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
   }
 }
 
@@ -142,8 +142,8 @@ TEST(RingfileTest, ReverseCircularWrite) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x20\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x31\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x08\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x19\x00\x00\x00\x00\x00\x00\x00"  // end offset
     "FGHIJKLM"  // leftover from record 2
     "\x0d\x00\x00\x00nopqrstuvwxyz"  // record 3
     "E"  // trailing byte (??)
@@ -154,7 +154,8 @@ TEST(RingfileTest, ReverseCircularWrite) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
+    size_t next_record_size;
+    EXPECT_TRUE(ringfile.NextRecordSize(&next_record_size));
     EXPECT_EQ(13, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
@@ -163,8 +164,7 @@ TEST(RingfileTest, ReverseCircularWrite) {
       next_record_size));
     EXPECT_EQ("nopqrstuvwxyz", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
   }
 }
 
@@ -177,11 +177,13 @@ TEST(RingfileTest, CannotWriteMessageAboveLimit) {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Create(path, 50));
 
-    // The maximum message size is 50 - 24 - 4 = 22 bytes
-    std::string message("01234567890123456789012");  // 23 bytes
+    
+    // The maximum message size is 50 - 24 - 4 - 1= 21 bytes
+    
+    std::string message("0123456789012345678901");  // 22 bytes
     ASSERT_FALSE(ringfile.Write(message.c_str(), message.size()));
 
-    message = "0123456789012345678901";  // 22 bytes
+    message = "012345678901234567890";  // 21 bytes
     ASSERT_TRUE(ringfile.Write(message.c_str(), message.size()));
     ringfile.Close();
   }
@@ -189,9 +191,10 @@ TEST(RingfileTest, CannotWriteMessageAboveLimit) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x18\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x32\x00\x00\x00\x00\x00\x00\x00"  // end offset
-    "\x16\x00\x00\x00" "0123456789012345678901"  // record
+    "\x00\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x19\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x15\x00\x00\x00" "012345678901234567890"  // record
+    "\x00"  // unspecified
     , 50), GetFileContents(path));
 
   {
@@ -199,17 +202,17 @@ TEST(RingfileTest, CannotWriteMessageAboveLimit) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(22, next_record_size) << strerror(ringfile.error());
+    size_t next_record_size;
+    EXPECT_TRUE(ringfile.NextRecordSize(&next_record_size));
+    EXPECT_EQ(21, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
     buffer.resize(next_record_size);
     EXPECT_TRUE(ringfile.Read(const_cast<char *>(buffer.c_str()),
       next_record_size));
-    EXPECT_EQ("0123456789012345678901", buffer);
+    EXPECT_EQ("012345678901234567890", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
   }
 }
 
@@ -222,8 +225,8 @@ TEST(RingfileTest, CanAppendEdge) {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Create(path, 50));
 
-    // The maximum message size is 50 - 24 - 4 = 22 bytes
-    std::string message("0123456789012345678901");
+    // The maximum message size is 50 - 24 - 4 = 21 bytes
+    std::string message("012345678901234567890");
     ASSERT_TRUE(ringfile.Write(message.c_str(), message.size()));
 
     message = "abcd";
@@ -235,18 +238,21 @@ TEST(RingfileTest, CanAppendEdge) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x18\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x20\x00\x00\x00\x00\x00\x00\x00"  // end offset
-    "\x04\x00\x00\x00" "abcd"  // record
-    "456789012345678901"  // old record
+    "\x19\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x07\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\0\0\0" // second part of record header
+    "abcd" // record
+    "345678901234567890" // old record
+    "\x04"  // first part of header
     , 50), GetFileContents(path));
-
+  
   {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
+    size_t next_record_size;
+    EXPECT_TRUE(ringfile.NextRecordSize(&next_record_size));
     EXPECT_EQ(4, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
@@ -255,10 +261,120 @@ TEST(RingfileTest, CanAppendEdge) {
       next_record_size));
     EXPECT_EQ("abcd", buffer);
 
-    next_record_size = ringfile.NextRecordSize();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
   }
 }
+
+
+TEST(RingfileTest, CanReadAndWriteBasicsStreaming) {
+  std::string path = TempDir() + "/ring";
+
+  {
+    Ringfile ringfile;
+    ASSERT_TRUE(ringfile.Create(path, 1024));
+
+    ASSERT_EQ(true, ringfile.StreamingWriteStart());
+    ASSERT_EQ(true, ringfile.StreamingWrite("Hello, ", 7));
+    ASSERT_EQ(true, ringfile.StreamingWrite("World!", 6));
+    ASSERT_EQ(true, ringfile.StreamingWriteFinish());
+    ringfile.Close();
+  }
+
+  EXPECT_EQ(std::string(
+    "RING"  // magic number
+    "\x00\x00\x00\x00"  // flags
+    "\x00\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x11\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x0d\x00\x00\x00"  // record length
+    "Hello, World!", 41), GetFileContents(path).substr(0, 41));
+
+  {
+    Ringfile ringfile;
+    ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
+      << strerror(ringfile.error());
+
+    EXPECT_EQ(13, ringfile.StreamingReadStart());
+    
+    char buffer[5];
+    EXPECT_EQ(5, ringfile.StreamingRead(&buffer, 5));
+    EXPECT_STREQ("Hello", buffer);
+    
+    EXPECT_EQ(5, ringfile.StreamingRead(&buffer, 5));
+    EXPECT_STREQ(", Wor", buffer);
+    
+    buffer[3] = 0;
+    EXPECT_EQ(3, ringfile.StreamingRead(&buffer, 5));
+    EXPECT_STREQ("ld!", buffer);
+    
+    EXPECT_EQ(true, ringfile.StreamingReadFinish());
+    
+    EXPECT_EQ(-1, ringfile.StreamingReadStart());
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
+  }
+}
+
+TEST(RingfileTest, CircularWriteStreaming) {
+  std::string path = TempDir() + "/ring";
+
+  {
+    Ringfile ringfile;
+    ASSERT_TRUE(ringfile.Create(path, 50));
+    
+    ASSERT_EQ(true, ringfile.StreamingWriteStart());
+    ASSERT_EQ(true, ringfile.StreamingWrite("Hello, ", 7));
+    ASSERT_EQ(true, ringfile.StreamingWrite("World!", 6));
+    ASSERT_EQ(true, ringfile.StreamingWriteFinish());
+    ringfile.Close();
+  }
+
+  {
+    Ringfile ringfile;
+    ASSERT_TRUE(ringfile.Open(path, Ringfile::kAppend));
+    
+    std::string message("Goodbye, Bob!");
+    ASSERT_EQ(true, ringfile.StreamingWriteStart());
+    ASSERT_EQ(true, ringfile.StreamingWrite("Goodbye", 7));
+    ASSERT_EQ(true, ringfile.StreamingWrite(", Bob!", 6));
+    ASSERT_EQ(true, ringfile.StreamingWriteFinish());
+    
+    ringfile.Close();
+  }
+
+  EXPECT_EQ(std::string(
+    "RING"  // magic number
+    "\x00\x00\x00\x00"  // flags
+    "\x11\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x08\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "ye, Bob!"  // end of the record
+    "o, World!"  // leftover from hello world
+    "\x0d\x00\x00\x00Goodb"  // beginning of message
+    , 50), GetFileContents(path));
+
+  {
+    Ringfile ringfile;
+    ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
+      << strerror(ringfile.error());
+
+    EXPECT_EQ(13, ringfile.StreamingReadStart());
+    
+    char buffer[5];
+    EXPECT_EQ(5, ringfile.StreamingRead(&buffer, 5));
+    EXPECT_STREQ("Goodb", buffer);
+    
+    EXPECT_EQ(5, ringfile.StreamingRead(&buffer, 5));
+    EXPECT_STREQ("ye, B", buffer);
+    
+    buffer[3] = 0;
+    EXPECT_EQ(3, ringfile.StreamingRead(&buffer, 5));
+    EXPECT_STREQ("ob!", buffer);
+    
+    EXPECT_EQ(true, ringfile.StreamingReadFinish());
+    
+    EXPECT_EQ(-1, ringfile.StreamingReadStart());
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
+  }
+}
+
 
 // This test checks that a write can work when the end offset is < start offset
 TEST(RingfileTest, ReverseCircularWriteStreaming) {
@@ -289,8 +405,8 @@ TEST(RingfileTest, ReverseCircularWriteStreaming) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x20\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x31\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x08\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x19\x00\x00\x00\x00\x00\x00\x00"  // end offset
     "FGHIJKLM"  // leftover from record 2
     "\x0d\x00\x00\x00nopqrstuvwxyz"  // record 3
     "E"  // trailing byte (??)
@@ -309,7 +425,7 @@ TEST(RingfileTest, ReverseCircularWriteStreaming) {
       if (buffer_part_size == 0) {
         break;
       }
-      ASSERT_NE(-1, buffer_part_size);
+      ASSERT_NE(static_cast<size_t>(-1), buffer_part_size);
       buffer.append(std::string(buffer_part, buffer_part_size));
     }
     ringfile.StreamingReadFinish();
@@ -318,6 +434,8 @@ TEST(RingfileTest, ReverseCircularWriteStreaming) {
     EXPECT_EQ(-1, ringfile.StreamingReadStart());
   }
 }
+
+
 
 // This test checks that a write can work for the maximum size message but
 // not for a larger one
@@ -328,13 +446,26 @@ TEST(RingfileTest, CannotWriteMessageAboveLimitStreaming) {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Create(path, 50));
 
-    // The maximum message size is 50 - 24 - 4 = 22 bytes
-    std::string message("01234567890123456789012");  // 23 bytes
+    // The maximum message size is 50 - 24 - 4 - 1 = 21 bytes
+    std::string message("0123456789012345678901");  // 22 bytes
     ASSERT_TRUE(ringfile.StreamingWriteStart());
     ASSERT_FALSE(ringfile.StreamingWrite(message.c_str(), message.size()));
-    ASSERT_TRUE(ringfile.StreamingWriteFinish());
-
-    message = "0123456789012345678901";  // 22 bytes
+    ringfile.Close();
+  }
+  
+  
+  EXPECT_EQ(std::string(
+    "RING"  // magic number
+    "\x00\x00\x00\x00"  // flags
+    "\x00\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x00\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+    , 50), GetFileContents(path));
+  
+  {
+    Ringfile ringfile;
+    ASSERT_TRUE(ringfile.Open(path, Ringfile::kAppend));
+    std::string message = "012345678901234567890";  // 21 bytes
     ASSERT_TRUE(ringfile.StreamingWriteStart());
     ASSERT_TRUE(ringfile.StreamingWrite(message.c_str(), message.size()));
     ASSERT_TRUE(ringfile.StreamingWriteFinish());
@@ -344,9 +475,10 @@ TEST(RingfileTest, CannotWriteMessageAboveLimitStreaming) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x18\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x32\x00\x00\x00\x00\x00\x00\x00"  // end offset
-    "\x16\x00\x00\x00" "0123456789012345678901"  // record
+    "\x00\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x19\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\x15\x00\x00\x00" "012345678901234567890"  // record
+    "\x00"  // unspecified
     , 50), GetFileContents(path));
 
   {
@@ -355,7 +487,7 @@ TEST(RingfileTest, CannotWriteMessageAboveLimitStreaming) {
       << strerror(ringfile.error());
 
     std::string buffer;
-    EXPECT_EQ(22, ringfile.StreamingReadStart());
+    EXPECT_EQ(21, ringfile.StreamingReadStart());
     while (true) {
       char buffer_part[5];
       size_t buffer_part_size = ringfile.StreamingRead(buffer_part, 5);
@@ -366,15 +498,12 @@ TEST(RingfileTest, CannotWriteMessageAboveLimitStreaming) {
       buffer.append(std::string(buffer_part, buffer_part_size));
     }
     ringfile.StreamingReadFinish();
-    EXPECT_EQ("0123456789012345678901", buffer);
+    EXPECT_EQ("012345678901234567890", buffer);
 
-    size_t next_record_size = ringfile.StreamingReadStart();
-    EXPECT_EQ(-1, next_record_size);
+    EXPECT_FALSE(ringfile.NextRecordSize(NULL));
   }
 }
 
-// This test checks that the write can work when the offset is at the end of
-// the file.
 TEST(RingfileTest, CanAppendEdgeStreaming) {
   std::string path = TempDir() + "/ring";
 
@@ -382,8 +511,8 @@ TEST(RingfileTest, CanAppendEdgeStreaming) {
     Ringfile ringfile;
     ASSERT_TRUE(ringfile.Create(path, 50));
 
-    // The maximum message size is 50 - 24 - 4 = 22 bytes
-    std::string message("0123456789012345678901");
+    // The maximum message size is 50 - 24 - 4 = 21 bytes
+    std::string message("012345678901234567890");
     ASSERT_TRUE(ringfile.StreamingWriteStart());
     ASSERT_TRUE(ringfile.StreamingWrite(message.c_str(), message.size()));
     ASSERT_TRUE(ringfile.StreamingWriteFinish())
@@ -401,10 +530,12 @@ TEST(RingfileTest, CanAppendEdgeStreaming) {
   EXPECT_EQ(std::string(
     "RING"  // magic number
     "\x00\x00\x00\x00"  // flags
-    "\x18\x00\x00\x00\x00\x00\x00\x00"  // start offset
-    "\x20\x00\x00\x00\x00\x00\x00\x00"  // end offset
-    "\x04\x00\x00\x00" "abcd"  // record
-    "456789012345678901"  // old record
+    "\x19\x00\x00\x00\x00\x00\x00\x00"  // start offset
+    "\x07\x00\x00\x00\x00\x00\x00\x00"  // end offset
+    "\0\0\0" // second part of record header
+    "abcd" // record
+    "345678901234567890" // old record
+    "\x04"  // first part of header
     , 50), GetFileContents(path));
 
   {
@@ -412,7 +543,8 @@ TEST(RingfileTest, CanAppendEdgeStreaming) {
     ASSERT_TRUE(ringfile.Open(path, Ringfile::kRead))
       << strerror(ringfile.error());
 
-    int next_record_size = ringfile.NextRecordSize();
+    size_t next_record_size;
+    EXPECT_TRUE(ringfile.NextRecordSize(&next_record_size));
     EXPECT_EQ(4, next_record_size) << strerror(ringfile.error());
 
     std::string buffer;
@@ -429,4 +561,3 @@ TEST(RingfileTest, CanAppendEdgeStreaming) {
     EXPECT_EQ(-1, next_record_size);
   }
 }
-

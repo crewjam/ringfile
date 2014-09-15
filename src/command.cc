@@ -114,8 +114,8 @@ bool Command::Read() {
   }
 
   while (true) {
-    size_t size = ring_file.NextRecordSize();
-    if (size == -1) {
+    size_t size;
+    if (!ring_file.NextRecordSize(&size)) {
       break;
     }
 
@@ -173,6 +173,7 @@ bool Command::Stat() {
   *stdout << "File: " << path << "\n";
   *stdout << "Size: " << ring_file.bytes_max() << " bytes\n";
   *stdout << "Used: " << ring_file.bytes_used() << " bytes\n";
+  *stdout << "Free: " << ring_file.bytes_available() << " bytes\n";
   return true;
 }
 
