@@ -295,7 +295,8 @@ TEST(RingfileTest, CanReadAndWriteBasicsStreaming) {
 
     EXPECT_EQ(13, ringfile.StreamingReadStart());
     
-    char buffer[5];
+    char buffer[6];
+    buffer[5] = 0;
     EXPECT_EQ(5, ringfile.StreamingRead(&buffer, 5));
     EXPECT_STREQ("Hello", buffer);
     
@@ -434,8 +435,6 @@ TEST(RingfileTest, ReverseCircularWriteStreaming) {
     EXPECT_EQ(-1, ringfile.StreamingReadStart());
   }
 }
-
-
 
 // This test checks that a write can work for the maximum size message but
 // not for a larger one
