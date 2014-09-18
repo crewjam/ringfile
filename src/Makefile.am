@@ -5,7 +5,8 @@ lib_LTLIBRARIES = libringfile.la
 libringfile_la_SOURCES = \
   public_interface.cc \
   ringfile_internal.h \
-  ringfile.cc
+  ringfile.cc \
+  varint.cc
 
 bin_PROGRAMS = ringfile
 ringfile_SOURCES = command.h command.cc main.cc
@@ -21,7 +22,8 @@ ringfile_test_SOURCES = \
   public_interface_test.cc \
   ringfile_test.cc \
   test_util.h \
-  test_util.cc
+  test_util.cc \
+  varint_test.cc
 
 ringfile_test_CPPFLAGS = $(AM_CPPFLAGS) \
   -isystem $(top_srcdir)/third_party/gtest/include \
