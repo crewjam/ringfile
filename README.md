@@ -93,13 +93,6 @@ Read all records from a file (Python):
 
     import ringfile
     f = ringfile.Ringfile("hello.bin")
-    while True:
-      record = f.read()
-      if record is None:
-        break
-      print record
-
-    # TODO(ross): we really should support iteration like
     for record in f:
       print record
 
@@ -137,5 +130,5 @@ TODO
 - ~~dont corrupt the file on partial writes~~
 - ~~python interface/implementation~~
 - compresssion?
-- support iteration in python interface
+- ~~support iteration in python interface~~
 - variable length encoding for record lengths

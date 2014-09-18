@@ -22,6 +22,8 @@ static PyObject * Ringfile_create(PyObject * cls, PyObject * args,
 static PyObject * Ringfile_write(RingfileObject *self, PyObject *args,
   PyObject *kwargs);
 static PyObject * Ringfile_read(RingfileObject *self);
+static PyObject * Ringfile_iter(RingfileObject *self);
+static PyObject * Ringfile_iternext(RingfileObject *self);
 static PyObject * Ringfile_close(RingfileObject *self);
 
 #endif  // PYTHON_MODULE_H_

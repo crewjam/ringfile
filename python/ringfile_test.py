@@ -49,6 +49,20 @@ class RingFileTest(unittest.TestCase):
     self.assertEqual("Goodbye, World!", ringfile.read())
     self.assertEqual(None, ringfile.read())
 
+  def testCanIterate(self):
+    path = TempDir() + "/ring"
+
+    ringfile = Ringfile.create(path, 1024)
+    ringfile.write("Hello, World!")
+    ringfile.close()
+
+    ringfile = Ringfile(path, MODE_APPEND)
+    ringfile.write("Goodbye, World!")
+    ringfile.close()
+
+    records = list(Ringfile(path, MODE_READ))
+    self.assertEqual(["Hello, World!", "Goodbye, World!"], records)
+
   def testDocsExist(self):
     self.assertTrue(Ringfile.__doc__)
     for name in dir(Ringfile):

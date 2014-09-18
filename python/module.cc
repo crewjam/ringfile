@@ -91,8 +91,8 @@ static PyTypeObject RingfileType = {
   0,                         // tp_clear
   0,                         // tp_richcompare
   0,                         // tp_weaklistoffset
-  0,                         // tp_iter
-  0,                         // tp_iternext
+  (getiterfunc)Ringfile_iter,  // tp_iter
+  (iternextfunc)Ringfile_iternext,  // tp_iternext
   Ringfile_methods,          // tp_methods
   0,                         // tp_members
   0,                         // tp_getset
@@ -246,6 +246,24 @@ static PyObject * Ringfile_read(RingfileObject *self) {
   }
 
   return buffer;
+}
+
+static PyObject * Ringfile_iter(RingfileObject * self) {
+  Py_INCREF(self);
+  return reinterpret_cast<PyObject *>(self);
+}
+
+static PyObject * Ringfile_iternext(RingfileObject * self) {
+  PyObject * rv = Ringfile_read(self);
+  if (rv == NULL) {
+    return NULL;
+  }
+  if (rv == Py_None) {
+    Py_DECREF(rv);
+    PyErr_SetNone(PyExc_StopIteration);
+    return NULL;
+  }
+  return rv;
 }
 
 static PyObject * Ringfile_close(RingfileObject *self) {
