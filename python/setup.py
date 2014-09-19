@@ -12,6 +12,7 @@ srcdir = "."
 sources = [
   "module.cc",
   "../src/ringfile.cc",
+  "../src/varint.cc",
 ]
 
 

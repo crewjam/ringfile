@@ -6,6 +6,7 @@ libringfile_la_SOURCES = \
   public_interface.cc \
   ringfile_internal.h \
   ringfile.cc \
+  varint.h \
   varint.cc
 
 bin_PROGRAMS = ringfile

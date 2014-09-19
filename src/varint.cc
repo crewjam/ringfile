@@ -5,10 +5,6 @@
 
 #include <math.h>
 
-Varint::Varint()
-  : value_(0) {
-}
-
 int Varint::Read(const void * buffer) {
   value_ = 0;
   for (int shift = 0; shift < 10; ++shift) {

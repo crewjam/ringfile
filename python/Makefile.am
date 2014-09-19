@@ -23,7 +23,7 @@ clean-local:
 	[ ! -d ringfile.egg-info ] || $(RM) -r ringfile.egg-info
 
 distclean-local:
-	test -z "$(VPATH)" || $(RM) module.cc ringfile.cc setup.py ringfile_test.py
+	test -z "$(VPATH)" || $(RM) module.cc ringfile.cc varint.cc setup.py ringfile_test.py
 
 #install-exec-local: pymod-build-stamp
 #	VPATH=$(VPATH) $(PYTHON) setup.py install --prefix $(DESTDIR)$(prefix)

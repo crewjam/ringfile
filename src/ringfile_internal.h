@@ -21,10 +21,6 @@ struct Header {
   uint64_t start_offset;
   uint64_t end_offset;
 };
-
-struct RecordHeader {
-  uint32_t size;
-};
 #pragma pack(pop)
 
 class Ringfile {
@@ -43,7 +39,7 @@ class Ringfile {
   bool EndOfFile();
 
   bool Close();
-  
+
   int error() { return error_; }
   size_t bytes_max() const;
   size_t bytes_used() const;
@@ -51,22 +47,22 @@ class Ringfile {
 
   // Support for writing records piecewise without knowing exactly how big the
   // record will be when writing starts.
-  bool StreamingWriteStart();
+  bool StreamingWriteStart(size_t size);
   bool StreamingWrite(const void * ptr, size_t size);
   bool StreamingWriteFinish();
-  
+
   // Functions that support reading partial records
   size_t StreamingReadStart();
   size_t StreamingRead(void * ptr, size_t size);
   bool StreamingReadFinish();
-  
+
  private:
   // Set the file pointer to `offset`.
   // Note: whenever we refer to a file offset it is relative to beginning of the
-  // data area of the file, not relative to the beginning of the file. Also, 
+  // data area of the file, not relative to the beginning of the file. Also,
   // all offsets are interpreted modulo the data size (bytes_max()).
   bool SeekToOffset(uint64_t offset);
-  
+
   // Remove the first record in the file by advancing the start offset to the
   // next record. Returns true on success.
   bool PopRecord();
@@ -81,11 +77,11 @@ class Ringfile {
   Header * header_;
   uint64_t read_offset_;
 
-  RecordHeader partial_write_header_;
-  uint64_t partial_write_header_offset_;
-  
-  RecordHeader partial_read_header_;
-  uint64_t partial_read_offset_;
+  uint64_t streaming_write_offset_;
+  uint64_t streaming_write_bytes_remaining_;
+  uint64_t streaming_read_offset_;
+  uint64_t streaming_read_bytes_remaining_;
+
 };
 
 #endif  // RINGFILE_INTERNAL_H_

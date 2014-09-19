@@ -177,7 +177,7 @@ TEST(CommandTest, CanAppendReadAndWrite) {
 
     std::string expected_output = "File: ";
     expected_output += path;
-    expected_output += "\nSize: 26 bytes\nUsed: 17 bytes\nFree: 9 bytes\n";
+    expected_output += "\nSize: 26 bytes\nUsed: 14 bytes\nFree: 12 bytes\n";
 
     EXPECT_EQ(expected_output, stdout.str());
   }

@@ -9,10 +9,11 @@
 class Varint {
  public:
   enum {
-    kMaxSize = 9
+    kMaxSize = 10
   };
+  Varint() : value_(0) {}
+  explicit Varint(uint64_t value) : value_(value) {}
 
-  Varint();
   void set_value(uint64_t value) { value_ = value; }
   uint64_t value() const { return value_; }
 

@@ -109,10 +109,18 @@ Each file starts with a header containing the following fields:
 Note: the file offsets are relative to the end of the header, not the 
 beginning of the file.
 
-Each record consists of:
- 
-  - a 4-byte little endian length of the data
-  - the data
+Each record consists of a variable length integer specifying the length of the 
+record followed by the record.
+
+Limits:
+
+ - File offsets are represented as 64-bit unsigned integers so the maximum file
+   size is 2^64.
+ - Record lengths are represented with variable length encoding, but assumed to
+   be no more than 2^64.
+ - The file header consumes 24 bytes at the start of the file. The maximum size
+   of a single record is the remaining file size minus 1.
+ - Records are arbitrary binary strings, any byte is allowed.
 
 TODO
 ----
@@ -121,7 +129,7 @@ TODO
 - ~~support incremental writing~~
 - support terminator delimited not just length delimited
 - make the file format work on different endiannesses
-- clear up confusion about integer types uint64/uint32/size_t/ssize_t/int
+- ~~clear up confusion about integer types uint64/uint32/size_t/ssize_t/int~~
 - ~~implement c wrapper~~
 - export c++ class
 - ~~example use with syslog-ng, etc~~
@@ -131,4 +139,4 @@ TODO
 - ~~python interface/implementation~~
 - compresssion?
 - ~~support iteration in python interface~~
-- variable length encoding for record lengths
+- ~~variable length encoding for record lengths~~
